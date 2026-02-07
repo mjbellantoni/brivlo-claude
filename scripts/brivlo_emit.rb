@@ -96,6 +96,40 @@ module BrivloEmit
       [nil, nil, nil, nil]
     end
   end
+
+  def brivlo_event_available?
+    ENV.key?("BRIVLO_ENDPOINT") && ENV.key?("BRIVLO_TOKEN") && system("which brivlo_event > /dev/null 2>&1")
+  end
+
+  def run
+    unless brivlo_event_available?
+      $stderr.puts "brivlo: brivlo_event not available (missing CLI or env vars)" if ENV["BRIVLO_DEBUG"]
+      return
+    end
+
+    input = JSON.parse($stdin.read)
+    event, tool, summary, meta = map_event(input)
+    return unless event
+
+    args = [
+      "brivlo_event", event,
+      "--instance", detect_instance,
+      "--host", hostname,
+    ]
+    args.push("--tool", tool) if tool
+    args.push("--summary", summary) if summary && !summary.empty?
+    args.push("--meta", meta) if meta
+
+    exec(*args)
+  end
 end
 
-exit 0 if __FILE__ == $0
+if __FILE__ == $0
+  begin
+    BrivloEmit.run
+  rescue => e
+    $stderr.puts "brivlo: #{e.message}" if ENV["BRIVLO_DEBUG"]
+  ensure
+    exit 0
+  end
+end

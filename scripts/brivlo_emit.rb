@@ -5,11 +5,30 @@
 # Always exits 0 (fail-open).
 
 require "json"
+require "net/http"
+require "securerandom"
 require "socket"
 require "uri"
+require "yaml"
 
 module BrivloEmit
+  CONFIG_FILES = [
+    File.join(Dir.pwd, ".brivlo.yml"),
+    File.join(Dir.home, ".brivlo.yml"),
+  ].freeze
+
   module_function
+
+  def load_config
+    path = CONFIG_FILES.find { |p| File.exist?(p) }
+    return unless path
+
+    YAML.load_file(path).each do |key, value|
+      ENV[key] ||= value.to_s
+    end
+  rescue
+    nil
+  end
 
   def detect_instance
     return ENV["BRIVLO_INSTANCE"] if ENV["BRIVLO_INSTANCE"] && !ENV["BRIVLO_INSTANCE"].empty?
@@ -30,10 +49,6 @@ module BrivloEmit
 
   def hostname
     Socket.gethostname
-  end
-
-  def timestamp
-    Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ")
   end
 
   def sanitize_summary(tool_name, tool_input)
@@ -97,30 +112,65 @@ module BrivloEmit
     end
   end
 
-  def brivlo_event_available?
-    ENV.key?("BRIVLO_ENDPOINT") && ENV.key?("BRIVLO_TOKEN") && system("which brivlo_event > /dev/null 2>&1")
+  TIMEOUT = 2
+
+  def post_event(event, instance:, host:, tool: nil, summary: nil, meta: nil)
+    endpoint = ENV["BRIVLO_ENDPOINT"]
+    token    = ENV["BRIVLO_TOKEN"]
+    return unless endpoint && token
+
+    payload = {
+      event_id: SecureRandom.uuid,
+      ts:       Time.now.utc.iso8601,
+      event:    event,
+      instance: instance,
+      host:     host,
+    }
+    payload[:tool]    = tool if tool
+    payload[:summary] = summary if summary && !summary.empty?
+    payload[:meta]    = meta.to_json if meta
+
+    uri  = URI.join(endpoint, "/events")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.open_timeout = TIMEOUT
+    http.read_timeout = TIMEOUT
+    http.use_ssl = uri.scheme == "https"
+
+    request = Net::HTTP::Post.new(uri.path)
+    request["Content-Type"]  = "application/json"
+    request["Authorization"] = "Bearer #{token}"
+    request.body = JSON.generate(payload)
+
+    response = http.request(request)
+    $stderr.puts "[brivlo] Server returned #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+  rescue Errno::ECONNREFUSED, Net::OpenTimeout, Net::ReadTimeout, SocketError => e
+    $stderr.puts "[brivlo] #{e.message}" if ENV["BRIVLO_DEBUG"]
   end
 
   def run
-    unless brivlo_event_available?
-      $stderr.puts "brivlo: brivlo_event not available (missing CLI or env vars)" if ENV["BRIVLO_DEBUG"]
+    load_config
+
+    unless ENV["BRIVLO_ENDPOINT"] && ENV["BRIVLO_TOKEN"]
+      $stderr.puts "brivlo: missing BRIVLO_ENDPOINT or BRIVLO_TOKEN" if ENV["BRIVLO_DEBUG"]
       return
     end
 
     input = JSON.parse($stdin.read)
-    event, tool, summary, meta = map_event(input)
+    event, tool, summary, meta_str = map_event(input)
     return unless event
 
-    args = [
-      "brivlo_event", event,
-      "--instance", detect_instance,
-      "--host", hostname,
-    ]
-    args.push("--tool", tool) if tool
-    args.push("--summary", summary) if summary && !summary.empty?
-    args.push("--meta", meta) if meta
+    meta = nil
+    if meta_str
+      key, value = meta_str.split("=", 2)
+      meta = { key => value } if key
+    end
 
-    exec(*args)
+    post_event(event,
+      instance: detect_instance,
+      host:     hostname,
+      tool:     tool,
+      summary:  summary,
+      meta:     meta)
   end
 end
 

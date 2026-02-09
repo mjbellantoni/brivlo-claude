@@ -6,16 +6,16 @@ This repo contains only the Claude Code integration — no server, no database.
 
 ## Installation
 
-1. Clone this repo somewhere persistent:
-   ```bash
-   git clone https://github.com/mjbellantoni/brivlo-claude.git ~/brivlo-claude
+1. Add the plugin marketplace (once):
+   ```
+   /plugin marketplace add mjbellantoni/brivlo-claude
    ```
 
-2. Add to your user-level Claude Code settings (`~/.claude/settings.json`):
+2. Enable in your user-level Claude Code settings (`~/.claude/settings.json`):
    ```json
    {
      "enabledPlugins": {
-       "brivlo-claude@~/brivlo-claude": true
+       "brivlo-claude@brivlo-claude": true
      }
    }
    ```

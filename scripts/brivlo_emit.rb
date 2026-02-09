@@ -7,7 +7,6 @@
 require "json"
 require "net/http"
 require "securerandom"
-require "socket"
 require "uri"
 require "yaml"
 
@@ -31,24 +30,11 @@ module BrivloEmit
   end
 
   def detect_instance
-    return ENV["BRIVLO_INSTANCE"] if ENV["BRIVLO_INSTANCE"] && !ENV["BRIVLO_INSTANCE"].empty?
-
-    basename = File.basename(Dir.pwd)
-    return basename if basename.match?(/\Awt-/)
-
-    brivlo_json = File.join(Dir.pwd, ".brivlo.json")
-    if File.exist?(brivlo_json)
-      data = JSON.parse(File.read(brivlo_json))
-      return data["instance"] if data["instance"] && !data["instance"].empty?
-    end
-
-    "unknown"
-  rescue
-    "unknown"
+    ENV["BRIVLO_INSTANCE"] || File.basename(Dir.pwd)
   end
 
-  def hostname
-    Socket.gethostname
+  def detect_host
+    ENV["BRIVLO_HOST"]
   end
 
   def sanitize_summary(tool_name, tool_input)
@@ -167,7 +153,7 @@ module BrivloEmit
 
     post_event(event,
       instance: detect_instance,
-      host:     hostname,
+      host:     detect_host,
       tool:     tool,
       summary:  summary,
       meta:     meta)

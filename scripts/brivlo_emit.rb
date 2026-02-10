@@ -44,19 +44,18 @@ module BrivloEmit
   end
 
   def sanitize_summary(tool_name, tool_input)
-    return tool_name unless tool_input.is_a?(Hash)
+    return nil unless tool_input.is_a?(Hash)
 
     case tool_name
     when "Bash"
-      cmd = tool_input["command"].to_s.split("\n").first.to_s
-      "#{tool_name}: #{cmd[0, 80]}"
+      tool_input["command"].to_s.split("\n").first.to_s[0, 80]
     when "Edit", "Write", "Read"
-      "#{tool_name}: #{tool_input["file_path"]}"
+      tool_input["file_path"]
     when "WebFetch"
       domain = URI.parse(tool_input["url"].to_s).host rescue nil
-      "#{tool_name}: #{domain || "unknown"}"
+      domain || "unknown"
     when "Skill"
-      "#{tool_name}: #{tool_input["skill"]}"
+      tool_input["skill"]
     else
       tool_name
     end

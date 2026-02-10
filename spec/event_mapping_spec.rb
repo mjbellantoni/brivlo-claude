@@ -26,7 +26,7 @@ RSpec.describe BrivloEmit do
       event, tool, summary, meta = described_class.map_event(input)
       expect(event).to eq("wait.permission")
       expect(tool).to eq("Bash")
-      expect(summary).to include("Bash")
+      expect(summary).to eq("git push origin main")
     end
 
     context "when hook is Notification" do
@@ -114,22 +114,22 @@ RSpec.describe BrivloEmit do
   describe ".sanitize_summary" do
     it "summarizes Bash commands with first line truncated to 80 chars" do
       result = described_class.sanitize_summary("Bash", { "command" => "npm test" })
-      expect(result).to eq("Bash: npm test")
+      expect(result).to eq("npm test")
     end
 
     it "summarizes Edit/Write/Read with file_path" do
       result = described_class.sanitize_summary("Edit", { "file_path" => "/foo/bar.rb" })
-      expect(result).to eq("Edit: /foo/bar.rb")
+      expect(result).to eq("/foo/bar.rb")
     end
 
     it "summarizes WebFetch with domain" do
       result = described_class.sanitize_summary("WebFetch", { "url" => "https://example.com/page" })
-      expect(result).to eq("WebFetch: example.com")
+      expect(result).to eq("example.com")
     end
 
     it "summarizes Skill with skill name" do
       result = described_class.sanitize_summary("Skill", { "skill" => "commit" })
-      expect(result).to eq("Skill: commit")
+      expect(result).to eq("commit")
     end
 
     it "returns tool_name for unknown tools" do
@@ -137,9 +137,9 @@ RSpec.describe BrivloEmit do
       expect(result).to eq("UnknownTool")
     end
 
-    it "returns tool_name when tool_input is not a Hash" do
+    it "returns nil when tool_input is not a Hash" do
       result = described_class.sanitize_summary("Bash", nil)
-      expect(result).to eq("Bash")
+      expect(result).to be_nil
     end
   end
 end

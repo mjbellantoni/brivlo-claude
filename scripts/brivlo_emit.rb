@@ -7,6 +7,7 @@
 require "json"
 require "net/http"
 require "securerandom"
+require "socket"
 require "uri"
 require "yaml"
 
@@ -34,7 +35,12 @@ module BrivloEmit
   end
 
   def detect_host
-    ENV["BRIVLO_HOST"]
+    ENV["BRIVLO_HOST"] || default_hostname
+  end
+
+  def default_hostname
+    name = Socket.gethostname
+    name.end_with?(".local") ? "local" : name
   end
 
   def sanitize_summary(tool_name, tool_input)

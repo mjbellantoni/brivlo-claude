@@ -1,5 +1,5 @@
 {
   "name": "brivlo-claude",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Claude Code plugin that sends lifecycle events to a Brivlo server"
 }

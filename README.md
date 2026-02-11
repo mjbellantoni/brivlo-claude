@@ -81,6 +81,28 @@ Claude Code hooks fire on lifecycle events and pipe JSON to `scripts/brivlo_emit
 
 **Fail-open guarantee:** The plugin never blocks Claude. If `brivlo_event` is missing, env vars are absent, or the server is unreachable, the hook exits 0 silently. Set `BRIVLO_DEBUG=1` to see warnings on stderr.
 
-## In Claude Code
+## Skills
+
+### `brivlo:help`
 
 Run `/brivlo:help` for configuration and troubleshooting guidance.
+
+### `brivlo:send_event`
+
+Allows other skills to emit events to Brivlo. This enables visibility into skill invocations beyond the automatic hook-based tracking.
+
+**Usage from another skill:**
+
+Add this line to your skill's instructions:
+
+```markdown
+If `brivlo:send_event` is available, use `brivlo:send_event your-skill:name` as your first step.
+```
+
+For example, a `scm-tool:commit` skill might include:
+
+```markdown
+If `brivlo:send_event` is available, use `brivlo:send_event scm-tool:commit` as your first step.
+```
+
+This sends a `skill.invoke` event with the skill name as the summary. The check for availability ensures skills work normally even when brivlo-claude isn't installed.

@@ -1,0 +1,6 @@
+{
+  "enabledPlugins": {
+    "scm-tools@mjb-plugins": true,
+    "superpowers@superpowers-marketplace": true
+  }
+}

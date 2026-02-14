@@ -6,13 +6,13 @@ require_relative "../scripts/brivlo_emit"
 RSpec.describe BrivloEmit do
   describe ".map_event" do
     it "maps SessionStart to session.start" do
-      event, tool, summary, meta = described_class.map_event("hook_event_name" => "SessionStart")
+      event, tool, summary, meta, skill = described_class.map_event("hook_event_name" => "SessionStart")
       expect(event).to eq("session.start")
       expect(tool).to be_nil
     end
 
     it "maps SessionEnd to session.end" do
-      event, tool, summary, meta = described_class.map_event("hook_event_name" => "SessionEnd")
+      event, tool, summary, meta, skill = described_class.map_event("hook_event_name" => "SessionEnd")
       expect(event).to eq("session.end")
       expect(tool).to be_nil
     end
@@ -23,7 +23,7 @@ RSpec.describe BrivloEmit do
         "tool_name" => "Bash",
         "tool_input" => { "command" => "git push origin main" }
       }
-      event, tool, summary, meta = described_class.map_event(input)
+      event, tool, summary, meta, skill = described_class.map_event(input)
       expect(event).to eq("wait.permission")
       expect(tool).to eq("Bash")
       expect(summary).to eq("git push origin main")
@@ -36,7 +36,7 @@ RSpec.describe BrivloEmit do
           "notification_type" => "permission_prompt",
           "message" => "Approve?"
         }
-        event, tool, summary, meta = described_class.map_event(input)
+        event, tool, summary, meta, skill = described_class.map_event(input)
         expect(event).to eq("wait.permission")
         expect(tool).to be_nil
       end
@@ -46,7 +46,7 @@ RSpec.describe BrivloEmit do
           "hook_event_name" => "Notification",
           "notification_type" => "idle_prompt"
         }
-        event, tool, summary, meta = described_class.map_event(input)
+        event, tool, summary, meta, skill = described_class.map_event(input)
         expect(event).to eq("wait.idle")
         expect(tool).to be_nil
       end
@@ -56,7 +56,7 @@ RSpec.describe BrivloEmit do
           "hook_event_name" => "Notification",
           "notification_type" => "something_unknown"
         }
-        event, tool, summary, meta = described_class.map_event(input)
+        event, tool, summary, meta, skill = described_class.map_event(input)
         expect(event).to be_nil
       end
     end
@@ -67,9 +67,22 @@ RSpec.describe BrivloEmit do
         "tool_name" => "Bash",
         "tool_input" => { "command" => "npm test" }
       }
-      event, tool, summary, meta = described_class.map_event(input)
+      event, tool, summary, meta, skill = described_class.map_event(input)
       expect(event).to eq("tool.invoke")
       expect(tool).to eq("Bash")
+      expect(skill).to be_nil
+    end
+
+    it "includes skill name when PreToolUse fires for a Skill" do
+      input = {
+        "hook_event_name" => "PreToolUse",
+        "tool_name" => "Skill",
+        "tool_input" => { "skill" => "superpowers:brainstorming" }
+      }
+      event, tool, summary, meta, skill = described_class.map_event(input)
+      expect(event).to eq("tool.invoke")
+      expect(tool).to eq("Skill")
+      expect(skill).to eq("superpowers:brainstorming")
     end
 
     it "maps PostToolUseFailure to tool.error" do
@@ -78,7 +91,7 @@ RSpec.describe BrivloEmit do
         "tool_name" => "Bash",
         "tool_input" => { "command" => "failing cmd" }
       }
-      event, tool, summary, meta = described_class.map_event(input)
+      event, tool, summary, meta, skill = described_class.map_event(input)
       expect(event).to eq("tool.error")
       expect(tool).to eq("Bash")
     end
@@ -88,7 +101,7 @@ RSpec.describe BrivloEmit do
         "hook_event_name" => "SubagentStart",
         "agent_type" => "Explore"
       }
-      event, tool, summary, meta = described_class.map_event(input)
+      event, tool, summary, meta, skill = described_class.map_event(input)
       expect(event).to eq("phase.start")
       expect(summary).to eq("subagent: Explore")
       expect(meta).to eq("type=Explore")
@@ -99,14 +112,14 @@ RSpec.describe BrivloEmit do
         "hook_event_name" => "SubagentStop",
         "agent_type" => "Explore"
       }
-      event, tool, summary, meta = described_class.map_event(input)
+      event, tool, summary, meta, skill = described_class.map_event(input)
       expect(event).to eq("phase.end")
       expect(summary).to eq("subagent: Explore")
       expect(meta).to eq("type=Explore")
     end
 
     it "returns nil event for unknown hook events" do
-      event, tool, summary, meta = described_class.map_event("hook_event_name" => "SomethingElse")
+      event, tool, summary, meta, skill = described_class.map_event("hook_event_name" => "SomethingElse")
       expect(event).to be_nil
     end
   end

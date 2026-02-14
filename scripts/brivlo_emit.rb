@@ -70,42 +70,43 @@ module BrivloEmit
 
     case hook
     when "SessionStart"
-      ["session.start", nil, nil, nil]
+      ["session.start", nil, nil, nil, nil]
     when "SessionEnd"
-      ["session.end", nil, nil, nil]
+      ["session.end", nil, nil, nil, nil]
     when "PermissionRequest"
       summary = sanitize_summary(tool_name, tool_input)
-      ["wait.permission", tool_name, summary, nil]
+      ["wait.permission", tool_name, summary, nil, nil]
     when "Notification"
       case input["notification_type"]
       when "permission_prompt"
         msg = input["message"].to_s[0, 80]
-        ["wait.permission", nil, msg, nil]
+        ["wait.permission", nil, msg, nil, nil]
       when "idle_prompt"
-        ["wait.idle", nil, nil, nil]
+        ["wait.idle", nil, nil, nil, nil]
       else
-        [nil, nil, nil, nil]
+        [nil, nil, nil, nil, nil]
       end
     when "PreToolUse"
       summary = sanitize_summary(tool_name, tool_input)
-      ["tool.invoke", tool_name, summary, nil]
+      skill = tool_name == "Skill" ? tool_input["skill"] : nil
+      ["tool.invoke", tool_name, summary, nil, skill]
     when "PostToolUseFailure"
       summary = sanitize_summary(tool_name, tool_input)
-      ["tool.error", tool_name, summary, nil]
+      ["tool.error", tool_name, summary, nil, nil]
     when "SubagentStart"
       agent_type = input["agent_type"] || "unknown"
-      ["phase.start", nil, "subagent: #{agent_type}", "type=#{agent_type}"]
+      ["phase.start", nil, "subagent: #{agent_type}", "type=#{agent_type}", nil]
     when "SubagentStop"
       agent_type = input["agent_type"] || "unknown"
-      ["phase.end", nil, "subagent: #{agent_type}", "type=#{agent_type}"]
+      ["phase.end", nil, "subagent: #{agent_type}", "type=#{agent_type}", nil]
     else
-      [nil, nil, nil, nil]
+      [nil, nil, nil, nil, nil]
     end
   end
 
   TIMEOUT = 2
 
-  def post_event(event, instance:, host:, tool: nil, summary: nil, meta: nil)
+  def post_event(event, instance:, host:, tool: nil, summary: nil, meta: nil, skill: nil)
     endpoint = ENV["BRIVLO_ENDPOINT"]
     token    = ENV["BRIVLO_TOKEN"]
     return unless endpoint && token
@@ -118,6 +119,7 @@ module BrivloEmit
       host:     host,
     }
     payload[:tool]    = tool if tool
+    payload[:skill]   = skill if skill
     payload[:summary] = summary if summary && !summary.empty?
     payload[:meta]    = meta.to_json if meta
 
@@ -147,7 +149,7 @@ module BrivloEmit
     end
 
     input = JSON.parse($stdin.read)
-    event, tool, summary, meta_str = map_event(input)
+    event, tool, summary, meta_str, skill = map_event(input)
     return unless event
 
     meta = nil
@@ -160,6 +162,7 @@ module BrivloEmit
       instance: detect_instance,
       host:     detect_host,
       tool:     tool,
+      skill:    skill,
       summary:  summary,
       meta:     meta)
   end

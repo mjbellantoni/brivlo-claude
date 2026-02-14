@@ -49,6 +49,35 @@ RSpec.describe BrivloEmit do
       }
     end
 
+    it "includes optional skill when present" do
+      stub = stub_request(:post, "#{endpoint}/events")
+        .to_return(status: 200)
+
+      described_class.post_event("tool.invoke",
+        instance: "myapp", host: "local",
+        tool: "Skill", skill: "superpowers:brainstorming",
+        summary: "superpowers:brainstorming")
+
+      expect(WebMock).to have_requested(:post, "#{endpoint}/events").with { |req|
+        body = JSON.parse(req.body)
+        body["skill"] == "superpowers:brainstorming"
+      }
+    end
+
+    it "omits skill when nil" do
+      stub = stub_request(:post, "#{endpoint}/events")
+        .to_return(status: 200)
+
+      described_class.post_event("tool.invoke",
+        instance: "myapp", host: "local",
+        tool: "Bash", summary: "npm test")
+
+      expect(WebMock).to have_requested(:post, "#{endpoint}/events").with { |req|
+        body = JSON.parse(req.body)
+        !body.key?("skill")
+      }
+    end
+
     it "omits summary when it is empty" do
       stub = stub_request(:post, "#{endpoint}/events")
         .to_return(status: 200)
